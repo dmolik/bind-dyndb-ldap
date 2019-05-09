@@ -205,6 +205,13 @@ attributeTypes: ( 1.3.6.1.4.1.2428.20.1.44
  EQUALITY caseIgnoreIA5Match 
  SUBSTR caseIgnoreIA5SubstringsMatch )
 #
+attributeTypes: ( 1.3.6.1.4.1.2428.20.1.45 
+ NAME 'OPENPGPKEYRecord' 
+ DESC 'OPENPGPKEY, RFC 7929' 
+ SYNTAX 1.3.6.1.4.1.1466.115.121.1.26 
+ EQUALITY caseIgnoreIA5Match 
+ SUBSTR caseIgnoreIA5SubstringsMatch )
+#
 attributeTypes: ( 1.3.6.1.4.1.2428.20.1.51 
  NAME 'nSEC3PARAMRecord' 
  DESC 'RFC 5155' 
@@ -389,7 +396,8 @@ objectClasses: ( 2.16.840.1.113730.3.8.6.0
        SRVRecord $ TXTRecord $ MXRecord $ MDRecord $ HINFORecord $ 
        MINFORecord $ AFSDBRecord $ LOCRecord $ 
        NXTRecord $ NAPTRRecord $ KXRecord $ CERTRecord $ DNAMERecord $ 
-       DSRecord $ SSHFPRecord $ DLVRecord $ TLSARecord $ UnknownRecord
+       DSRecord $ SSHFPRecord $ DLVRecord $ TLSARecord $ UnknownRecord $ 
+       OPENPGPKEYRecord 
      ) )
 #
 objectClasses: ( 2.16.840.1.113730.3.8.6.1 
