@@ -1,12 +1,13 @@
 /*
- * Copyright (C) 2011-2019  bind-dyndb-ldap authors; see COPYING for license
+ * Copyright (C) 2011-2013  bind-dyndb-ldap authors; see COPYING for license
  */
 
 #ifndef _LD_TYPES_H_
 #define _LD_TYPES_H_
 
-#include <isc/int.h>
+#include <isc/boolean.h>
 #include <isc/event.h>
+#include <isc/int.h>
 #include <isc/refcount.h>
 #include <dns/name.h>
 
@@ -25,10 +26,7 @@
  * rdata1 -> rdata2 -> rdata3           rdata4 -> rdata5
  * next_rdatalist              ->       next_rdatalist  ...
  */
-
-//typedef LIST(dns_rdatalist_t) ldapdb_rdatalist_t;
-//changed here for GCC error: function definition declared ‘typedef
-typedef struct { dns_rdatalist_t *head, *tail; } ldapdb_rdatalist_t;
+typedef ISC_LIST(dns_rdatalist_t) ldapdb_rdatalist_t;
 
 typedef struct enum_txt_assoc {
 	int		value;
