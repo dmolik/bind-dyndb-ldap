@@ -190,8 +190,8 @@ ldap_entry_parse(isc_mem_t *mctx, LDAP *ld, LDAPMessage *ldap_entry,
 	char *attribute;
 	BerElement *ber = NULL;
 	ldap_entry_t *entry = NULL;
-	isc_boolean_t has_zone_dn;
-	isc_boolean_t has_zone_class;
+	bool has_zone_dn;
+	bool has_zone_class;
 
 	REQUIRE(ld != NULL);
 	REQUIRE(ldap_entry != NULL);
@@ -235,7 +235,7 @@ ldap_entry_parse(isc_mem_t *mctx, LDAP *ld, LDAPMessage *ldap_entry,
 		CHECK(dn_to_dnsname(mctx, entry->dn, &entry->fqdn,
 				    &entry->zone_name, &has_zone_dn));
 	else
-		has_zone_dn = ISC_FALSE;
+		has_zone_dn = false;
 	has_zone_class = ISC_TF(entry->class & (LDAP_ENTRYCLASS_MASTER
 						| LDAP_ENTRYCLASS_FORWARD));
 	CHECK(dn_want_zone(__func__, entry->dn, has_zone_dn, has_zone_class));
@@ -397,10 +397,10 @@ ldap_entry_getfakesoa(ldap_entry_t *entry, const char *fake_mname,
 
 	REQUIRE(entry != NULL);
 	REQUIRE(target != NULL);
-             
+
 	str_clear(target);
 	if (strlen(fake_mname) > 0) {
-		i = 1;  
+		i = 1;
 		CHECK(str_cat_char(target, fake_mname));
 		CHECK(str_cat_char(target, " "));
 	}
