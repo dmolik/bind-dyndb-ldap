@@ -237,8 +237,7 @@ ldap_entry_parse(isc_mem_t *mctx, LDAP *ld, LDAPMessage *ldap_entry,
 				    &entry->zone_name, &has_zone_dn));
 	else
 		has_zone_dn = false;
-	has_zone_class = ISC_TF(entry->class & (LDAP_ENTRYCLASS_MASTER
-						| LDAP_ENTRYCLASS_FORWARD));
+	has_zone_class = entry->class & (LDAP_ENTRYCLASS_MASTER | LDAP_ENTRYCLASS_FORWARD);
 	CHECK(dn_want_zone(__func__, entry->dn, has_zone_dn, has_zone_class));
 
 

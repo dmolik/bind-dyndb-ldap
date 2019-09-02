@@ -79,7 +79,7 @@ fs_dirs_create(const char *path) {
 	char curr_path[PATH_MAX + 1];
 	char *end = NULL;
 
-	CHECK(isc_string_copy(curr_path, PATH_MAX, path));
+	CHECK(strlcpy(curr_path, path, PATH_MAX) < PATH_MAX);
 
 	for (end = strchr(curr_path, '/');
 	     end != NULL;

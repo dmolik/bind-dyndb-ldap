@@ -202,15 +202,13 @@ barrier_decrement(isc_task_t *task, isc_event_t *event) {
 	sync_barrierev_t *bev = NULL;
 	sync_barrierev_t *fev = NULL;
 	isc_event_t *ev = NULL;
-	uint32_t cnt;
 	bool locked = false;
 
 	REQUIRE(ISCAPI_TASK_VALID(task));
 	REQUIRE(event != NULL);
 
 	bev = (sync_barrierev_t *)event;
-	isc_refcount_decrement(&bev->sctx->task_cnt, &cnt);
-	if (cnt == 0) {
+	if (isc_refcount_decrement(&bev->sctx->task_cnt) == 1) {
 		log_debug(1, "sync_barrier_wait(): barrier reached");
 		LOCK(&bev->sctx->mutex);
 		locked = true;
@@ -277,9 +275,9 @@ sync_ctx_init(isc_mem_t *mctx, ldap_instance_t *inst, sync_ctx_t **sctxp) {
 
 	sctx->inst = inst;
 
-	CHECK(isc_mutex_init(&sctx->mutex));
+	isc_mutex_init(&sctx->mutex);
 	lock_ready = true;
-	CHECK(isc_condition_init(&sctx->cond));
+	isc_condition_init(&sctx->cond);
 	cond_ready = true;
 
 	/* refcount includes ldap_inst->task implicitly */
@@ -298,7 +296,7 @@ sync_ctx_init(isc_mem_t *mctx, ldap_instance_t *inst, sync_ctx_t **sctxp) {
 
 cleanup:
 	if (lock_ready == true)
-		DESTROYLOCK(&sctx->mutex);
+		isc_mutex_destroy(&sctx->mutex);
 	if (cond_ready == true)
 		RUNTIME_CHECK(isc_condition_destroy(&sctx->cond)
 			      == ISC_R_SUCCESS);
@@ -330,14 +328,14 @@ sync_ctx_free(sync_ctx_t **sctxp) {
 		next_taskel = NEXT(taskel, link);
 		UNLINK(sctx->tasks, taskel, link);
 		isc_task_detach(&taskel->task);
-		isc_refcount_decrement(&sctx->task_cnt, NULL);
+		isc_refcount_decrement(&sctx->task_cnt);
 		SAFE_MEM_PUT_PTR(sctx->mctx, taskel);
 	}
 	RUNTIME_CHECK(isc_condition_destroy(&sctx->cond) == ISC_R_SUCCESS);
 	isc_refcount_destroy(&sctx->task_cnt);
 	UNLOCK(&sctx->mutex);
 
-	DESTROYLOCK(&(*sctxp)->mutex);
+	isc_mutex_destroy(&(*sctxp)->mutex);
 	MEM_PUT_AND_DETACH(*sctxp);
 }
 
@@ -460,7 +458,7 @@ sync_task_add(sync_ctx_t *sctx, isc_task_t *task) {
 	LOCK(&sctx->mutex);
 	REQUIRE(sctx->state == sync_configinit || sctx->state == sync_datainit);
 	ISC_LIST_APPEND(sctx->tasks, newel, link);
-	isc_refcount_increment0(&sctx->task_cnt, &cnt);
+	cnt = isc_refcount_increment0(&sctx->task_cnt) + 1;
 	UNLOCK(&sctx->mutex);
 
 	log_debug(2, "adding task %p to syncrepl list; %u tasks in list",

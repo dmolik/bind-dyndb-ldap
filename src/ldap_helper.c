@@ -446,7 +446,7 @@ validate_local_instance_settings(ldap_instance_t *inst, settings_set_t *set) {
 			  auth_method_str);
 		CLEANUP_WITH(ISC_R_FAILURE);
 	}
-	CHECK(isc_string_printf(print_buff, PRINT_BUFF_SIZE, "%u", auth_method_enum));
+	CHECK(snprintf(print_buff, PRINT_BUFF_SIZE, "%u", auth_method_enum) < PRINT_BUFF_SIZE);
 	CHECK(setting_set("auth_method_enum", inst->local_settings, print_buff));
 
 	/* check we have the right data when SASL/GSSAPI is selected */
@@ -556,14 +556,14 @@ new_ldap_instance(isc_mem_t *mctx, const char *db_name, const char *parameters,
 	ldap_inst->watcher = 0;
 	CHECK(sync_ctx_init(ldap_inst->mctx, ldap_inst, &ldap_inst->sctx));
 
-	isc_string_printf_truncate(settings_name, PRINT_BUFF_SIZE,
+	snprintf(settings_name, PRINT_BUFF_SIZE,
 				   SETTING_SET_NAME_LOCAL " for database %s",
 				   ldap_inst->db_name);
 	CHECK(settings_set_create(mctx, settings_local_default,
 	      sizeof(settings_local_default), settings_name,
 	      &settings_default_set, &ldap_inst->local_settings));
 
-	isc_string_printf_truncate(settings_name, PRINT_BUFF_SIZE,
+	snprintf(settings_name, PRINT_BUFF_SIZE,
 				   SETTING_SET_NAME_GLOBAL " for database %s",
 				   ldap_inst->db_name);
 	CHECK(settings_set_create(mctx, settings_global_default,
@@ -577,7 +577,7 @@ new_ldap_instance(isc_mem_t *mctx, const char *db_name, const char *parameters,
 	/* copy global forwarders setting for configuration roll back in
 	 * configure_zone_forwarders() */
 	result = dns_fwdtable_find(ldap_inst->view->fwdtable, dns_rootname,
-				   &named_conf_forwarders);
+				   NULL, &named_conf_forwarders);
 	if (result == ISC_R_SUCCESS) {
 		/* Copy forwarding config from named.conf into local_settings */
 		CHECK(fwd_print_list_buff(mctx, named_conf_forwarders,
@@ -630,11 +630,11 @@ new_ldap_instance(isc_mem_t *mctx, const char *db_name, const char *parameters,
 	CHECK(setting_get_str("server_id", ldap_inst->local_settings,
 			      &server_id));
 	if (strlen(server_id) == 0)
-		isc_string_printf_truncate(settings_name, PRINT_BUFF_SIZE,
+		snprintf(settings_name, PRINT_BUFF_SIZE,
 					   SETTING_SET_NAME_SERVER
 					   " for undefined server_id");
 	else
-		isc_string_printf_truncate(settings_name, PRINT_BUFF_SIZE,
+		snprintf(settings_name, PRINT_BUFF_SIZE,
 					   SETTING_SET_NAME_SERVER
 					   " for server id %s", server_id);
 
@@ -657,7 +657,7 @@ new_ldap_instance(isc_mem_t *mctx, const char *db_name, const char *parameters,
 	CHECK(fwdr_create(ldap_inst->mctx, &ldap_inst->fwd_register));
 	CHECK(mldap_new(mctx, &ldap_inst->mldapdb));
 
-	CHECK(isc_mutex_init(&ldap_inst->kinit_lock));
+	isc_mutex_init(&ldap_inst->kinit_lock);
 
 	CHECK(ldap_pool_create(mctx, connections, &ldap_inst->pool));
 	CHECK(ldap_pool_connect(ldap_inst->pool, ldap_inst));
@@ -750,7 +750,7 @@ destroy_ldap_instance(ldap_instance_t **ldap_instp)
 	if (ldap_inst->task != NULL)
 		isc_task_detach(&ldap_inst->task);
 
-	DESTROYLOCK(&ldap_inst->kinit_lock);
+	isc_mutex_destroy(&ldap_inst->kinit_lock);
 
 	settings_set_free(&ldap_inst->global_settings);
 	settings_set_free(&ldap_inst->local_settings);
@@ -783,11 +783,7 @@ new_ldap_connection(ldap_pool_t *pool, ldap_connection_t **ldap_connp)
 	CHECKED_MEM_GET_PTR(pool->mctx, ldap_conn);
 	ZERO_PTR(ldap_conn);
 
-	result = isc_mutex_init(&ldap_conn->lock);
-	if (result != ISC_R_SUCCESS) {
-		SAFE_MEM_PUT_PTR(pool->mctx, ldap_conn);
-		return result;
-	}
+	isc_mutex_init(&ldap_conn->lock);
 
 	isc_mem_attach(pool->mctx, &ldap_conn->mctx);
 
@@ -812,7 +808,7 @@ destroy_ldap_connection(ldap_connection_t **ldap_connp)
 	if (ldap_conn == NULL)
 		return;
 
-	DESTROYLOCK(&ldap_conn->lock);
+	isc_mutex_destroy(&ldap_conn->lock);
 	if (ldap_conn->handle != NULL)
 		ldap_unbind_ext_s(ldap_conn->handle, NULL, NULL);
 
@@ -848,8 +844,8 @@ cleanup_zone_files(dns_zone_t *zone) {
 	namelen = strlen(filename);
 	if (namelen > 4 && strcmp(filename + namelen - 4, ".jnl") == 0)
 		namelen -= 4;
-	CHECK(isc_string_printf(bck_filename, sizeof(bck_filename),
-				"%.*s.jbk", namelen, filename));
+	CHECK(snprintf(bck_filename, sizeof(bck_filename),
+				"%.*s.jbk", namelen, filename) < (int)sizeof(bck_filename));
 	CHECK(fs_file_remove(bck_filename));
 
 cleanup:
@@ -942,7 +938,7 @@ configure_paths(isc_mem_t *mctx, ldap_instance_t *inst, dns_zone_t *zone,
 	CHECK(zr_get_zone_path(mctx, ldap_instance_getsettings_local(inst),
 			       dns_zone_getorigin(zone),
 			       (issecure ? "signed" : "raw"), &file_name));
-	CHECK(dns_zone_setfile(zone, str_buf(file_name)));
+	CHECK(dns_zone_setfile(zone, str_buf(file_name), dns_masterformat_text, &dns_master_style_default));
 	if (issecure == true) {
 		CHECK(zr_get_zone_path(mctx,
 				       ldap_instance_getsettings_local(inst),
@@ -1056,7 +1052,7 @@ load_zone(dns_zone_t *zone, bool log) {
 	uint32_t serial;
 	dns_zone_t *raw = NULL;
 
-	result = dns_zone_load(zone);
+	result = dns_zone_load(zone, false);
 	if (result != ISC_R_SUCCESS && result != DNS_R_UPTODATE
 	    && result != DNS_R_DYNAMIC && result != DNS_R_CONTINUE)
 		goto cleanup;
@@ -1068,11 +1064,11 @@ load_zone(dns_zone_t *zone, bool log) {
 		zone = NULL;
 	}
 
-	CHECK(dns_zone_getserial2(raw, &serial));
+	CHECK(dns_zone_getserial(raw, &serial));
 	if (log == true)
 		dns_zone_log(raw, ISC_LOG_INFO, "loaded serial %u", serial);
 	if (zone != NULL) {
-		result = dns_zone_getserial2(zone, &serial);
+		result = dns_zone_getserial(zone, &serial);
 		if (result == ISC_R_SUCCESS && log == true)
 			dns_zone_log(zone, ISC_LOG_INFO, "loaded serial %u",
 				     serial);
@@ -1670,7 +1666,7 @@ diff_analyze_serial(dns_diff_t *diff, dns_difftuple_t **soa_latest,
 							  &tmp_tuple->rdata);
 					ret = dns_rdata_compare(del_soa,
 								&tmp_tuple->rdata);
-					*data_changed = ISC_TF(ret != 0);
+					*data_changed = ret != 0;
 				}
 				if (tmp_tuple != NULL)
 					dns_difftuple_free(&tmp_tuple);
@@ -1718,7 +1714,7 @@ ldap_replace_serial(ldap_instance_t *inst, dns_name_t *zone,
 	change.mod_op = LDAP_MOD_REPLACE;
 	change.mod_type = "idnsSOAserial";
 	change.mod_values = values;
-	CHECK(isc_string_printf(serial_char, MAX_SERIAL_LENGTH, "%u", serial));
+	CHECK(snprintf(serial_char, MAX_SERIAL_LENGTH, "%u", serial) < (int)MAX_SERIAL_LENGTH);
 
 	CHECK(ldap_modify_do(inst, str_buf(dn), changep, false));
 
@@ -2104,8 +2100,7 @@ ldap_parse_master_zoneentry(ldap_entry_t * const entry, dns_db_t * const olddb,
 	if (result == ISC_R_NOTFOUND || HEAD(values) == NULL)
 		want_secure = false;
 	else
-		want_secure = ISC_TF(strcasecmp(HEAD(values)->value, "TRUE")
-				     == 0);
+		want_secure = strcasecmp(HEAD(values)->value, "TRUE") == 0;
 
 	/* Check if we are already serving given zone */
 	result = zr_get_zone_ptr(inst->zone_register, &entry->fqdn,
@@ -2118,7 +2113,7 @@ ldap_parse_master_zoneentry(ldap_entry_t * const entry, dns_db_t * const olddb,
 			  ldap_entry_logname(entry), raw, secure);
 	} else if (result != ISC_R_SUCCESS)
 		goto cleanup;
-	else if (want_secure != ISC_TF(secure != NULL)) {
+	else if (want_secure != (secure != NULL)) {
 		if (want_secure == true)
 			dns_zone_log(raw, ISC_LOG_INFO,
 				     "upgrading zone to secure");
@@ -2394,8 +2389,8 @@ ldap_substitute_rr_template(isc_mem_t *mctx, const settings_set_t * set,
 		setting_name = tmp + matches[2].rm_so;
 		tmp[matches[2].rm_eo] = '\0';
 		setting = NULL;
-		result = setting_find(setting_name, set, boolrue,
-				      boolrue, &setting);
+		result = setting_find(setting_name, set, true,
+				      true, &setting);
 		if (result != ISC_R_SUCCESS) {
 			log_debug(5, "setting '%s' is not defined so it "
 				  "cannot be substituted into template '%s'",
@@ -3289,7 +3284,7 @@ ldap_rdttl_to_ldapmod(isc_mem_t *mctx, dns_rdatalist_t *rdlist,
 
 	CHECK(ldap_mod_create(mctx, &change));
 	change->mod_op = LDAP_MOD_REPLACE;
-	CHECK(isc_string_copy(change->mod_type, LDAP_ATTR_FORMATSIZE, "dnsTTL"));
+	CHECK(strlcpy(change->mod_type, "dnsTTL", LDAP_ATTR_FORMATSIZE) < LDAP_ATTR_FORMATSIZE);
 
 	CHECKED_MEM_ALLOCATE(mctx, vals, 2 * sizeof(char *));
 	memset(vals, 0, 2 * sizeof(char *));
@@ -3334,8 +3329,8 @@ modify_soa_record(ldap_instance_t *ldap_inst, const char *zone_dn,
 	change[index].mod_values = alloca(2 * sizeof(char *)); \
 	change[index].mod_values[0] = alloca(MAX_SOANUM_LENGTH); \
 	change[index].mod_values[1] = NULL; \
-	CHECK(isc_string_printf(change[index].mod_values[0], \
-		MAX_SOANUM_LENGTH, "%u", soa.name));
+	CHECK(snprintf(change[index].mod_values[0], \
+		MAX_SOANUM_LENGTH, "%u", soa.name) < MAX_SOANUM_LENGTH);
 
 	dns_rdata_tostruct(rdata, (void *)&soa, ldap_inst->mctx);
 
@@ -3502,8 +3497,7 @@ remove_rdtype_from_ldap(dns_name_t *owner, dns_name_t *zone,
 		change[0]->mod_vals.modv_strvals = NULL;
 		CHECK(rdatatype_to_ldap_attribute(type, attr, sizeof(attr),
 						  unknown_type));
-		CHECK(isc_string_copy(change[0]->mod_type, LDAP_ATTR_FORMATSIZE,
-				      attr));
+		CHECK(strlcpy(change[0]->mod_type, attr, LDAP_ATTR_FORMATSIZE) < LDAP_ATTR_FORMATSIZE);
 		CHECK(ldap_modify_do(ldap_inst, str_buf(dn), change, false));
 		ldap_mod_free(ldap_inst->mctx, &change[0]);
 		unknown_type = !unknown_type;
@@ -3975,7 +3969,7 @@ update_restart:
 	/* Check if the zone is loaded or not.
 	 * No other function above returns DNS_R_NOTLOADED. */
 	if (sync_state == sync_finished)
-		result = dns_zone_getserial2(raw, &serial);
+		result = dns_zone_getserial(raw, &serial);
 
 cleanup:
 #ifdef RBTDB_DEBUG
@@ -4012,7 +4006,7 @@ cleanup:
 				     "caused by change in %s",
 				     ldap_entry_logname(entry));
 			zone_reloaded = true;
-			result = dns_zone_getserial2(raw, &serial);
+			result = dns_zone_getserial(raw, &serial);
 			if (result == ISC_R_SUCCESS)
 				goto update_restart;
 		} else {
@@ -4075,7 +4069,7 @@ ldap_dn_compare(const char *dn1_instr, const char *dn2_instr,
 	if (ret != LDAP_SUCCESS)
 		CLEANUP_WITH(ISC_R_FAILURE);
 
-	*isequal = ISC_TF(strcasecmp(dn1_outstr, dn2_outstr) == 0);
+	*isequal = strcasecmp(dn1_outstr, dn2_outstr) == 0;
 	result = ISC_R_SUCCESS;
 
 cleanup:
@@ -4385,7 +4379,7 @@ cleanup:
 	metadb_node_close(&node);
 	if (mldap_open == true)
 		/* commit metaDB changes if the syncrepl event was sent */
-		mldap_closeversion(inst->mldapdb, ISC_TF(result == ISC_R_SUCCESS));
+		mldap_closeversion(inst->mldapdb, result == ISC_R_SUCCESS);
 	if (result != ISC_R_SUCCESS) {
 		log_error_r("ldap_sync_search_entry failed");
 		sync_concurr_limit_signal(inst->sctx);
@@ -4623,13 +4617,13 @@ ldap_sync_doit(ldap_instance_t *inst, ldap_connection_t *conn,
 	/* request idnsServerConfig object only if server_id is specified */
 	CHECK(setting_get_str("server_id", inst->server_ldap_settings, &server_id));
 	if (strlen(server_id) == 0)
-		CHECK(isc_string_printf(filter, sizeof(filter), config_template,
-				        "", "", "", filter_objcs));
+		CHECK(snprintf(filter, sizeof(filter), config_template,
+				        "", "", "", filter_objcs) < (int)sizeof(filter));
 	else
-		CHECK(isc_string_printf(filter, sizeof(filter), config_template,
+		CHECK(snprintf(filter, sizeof(filter), config_template,
 					"  (&(objectClass=idnsServerConfigObject)"
 				        "    (idnsServerId=", server_id, "))",
-					filter_objcs));
+					filter_objcs) < (int)sizeof(filter));
 
 	result = ldap_sync_prepare(inst, inst->server_ldap_settings,
 				   filter, conn, &ldap_sync);
@@ -4823,12 +4817,12 @@ ldap_instance_isexiting(ldap_instance_t *ldap_inst)
  * (if it is even possible). */
 void
 ldap_instance_taint(ldap_instance_t *ldap_inst) {
-	isc_refcount_increment0(&ldap_inst->errors, NULL);
+	isc_refcount_increment0(&ldap_inst->errors);
 }
 
 bool
 ldap_instance_istained(ldap_instance_t *ldap_inst) {
-	return ISC_TF(isc_refcount_current(&ldap_inst->errors) != 0);
+	return isc_refcount_current(&ldap_inst->errors) != 0;
 }
 
 /**
@@ -4854,10 +4848,10 @@ isc_result_t
 ldap_instance_untaint_finish(ldap_instance_t *ldap_inst, unsigned int count) {
 	unsigned int remaining = 0;
 	while (count > 0) {
-		isc_refcount_decrement(&ldap_inst->errors, &remaining);
+		remaining = isc_refcount_decrement(&ldap_inst->errors);
 		count--;
 	}
-	if (remaining != 0)
+	if (remaining != 1)
 		return DNS_R_CONTINUE;
 	else
 		return ISC_R_SUCCESS;

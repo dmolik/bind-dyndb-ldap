@@ -5,7 +5,6 @@
 #include <isc/mem.h>
 #include <isc/rwlock.h>
 #include <isc/util.h>
-#include <isc/md5.h>
 #include <isc/string.h>
 
 #include <dns/db.h>
@@ -281,7 +280,7 @@ create_zone_info(isc_mem_t * const mctx, dns_zone_t * const raw,
 		dns_zone_attach(secure, &zinfo->secure);
 
 	zinfo->settings = NULL;
-	isc_string_printf_truncate(settings_name, PRINT_BUFF_SIZE,
+	snprintf(settings_name, PRINT_BUFF_SIZE,
 				   SETTING_SET_NAME_ZONE " %s",
 				   dn);
 	CHECK(settings_set_create(mctx, zone_settings, sizeof(zone_settings),

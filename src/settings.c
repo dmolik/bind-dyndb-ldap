@@ -151,7 +151,7 @@ setting_get(const char *const name, const setting_type_t type,
 	REQUIRE(name != NULL);
 	REQUIRE(target != NULL);
 
-	CHECK(setting_find(name, set, boolrue, boolrue, &setting));
+	CHECK(setting_find(name, set, true, true, &setting));
 
 	if (setting->type != type) {
 		log_bug("incompatible setting data type requested "
@@ -266,7 +266,7 @@ set_value(isc_mem_t *mctx, const settings_set_t *set, setting_t *setting,
 			CLEANUP_WITH(ISC_R_UNEXPECTEDTOKEN);
 		}
 		if (setting->filled &&
-		    setting->value.value_boolean == ISC_TF(numeric_value))
+		    setting->value.value_boolean == (numeric_value != 0))
 			CLEANUP_WITH(ISC_R_IGNORE);
 		break;
 	default:
@@ -282,7 +282,7 @@ set_value(isc_mem_t *mctx, const settings_set_t *set, setting_t *setting,
 			isc_mem_free(mctx, setting->value.value_char);
 		CHECKED_MEM_ALLOCATE(mctx, setting->value.value_char, len);
 		setting->is_dynamic = true;
-		CHECK(isc_string_copy(setting->value.value_char, len, value));
+		CHECK(strlcpy(setting->value.value_char, value, len) < len);
 		break;
 
 	case ST_UNSIGNED_INTEGER:
@@ -290,7 +290,7 @@ set_value(isc_mem_t *mctx, const settings_set_t *set, setting_t *setting,
 		break;
 
 	case ST_BOOLEAN:
-		setting->value.value_boolean = ISC_TF(numeric_value);
+		setting->value.value_boolean = (numeric_value != 0);
 		break;
 	default:
 		UNEXPECTED_ERROR(__FILE__, __LINE__,
@@ -494,8 +494,7 @@ settings_set_create(isc_mem_t *mctx, const setting_t default_settings[],
 	isc_mem_attach(mctx, &new_set->mctx);
 
 	CHECKED_MEM_GET_PTR(mctx, new_set->lock);
-	result = isc_mutex_init(new_set->lock);
-	INSIST(result == ISC_R_SUCCESS);
+	isc_mutex_init(new_set->lock);
 
 	new_set->parent_set = parent_set;
 
@@ -532,7 +531,7 @@ settings_set_free(settings_set_t **set) {
 		mctx = (*set)->mctx;
 
 		if ((*set)->lock != NULL) {
-			DESTROYLOCK((*set)->lock);
+			isc_mutex_destroy((*set)->lock);
 			SAFE_MEM_PUT_PTR(mctx, (*set)->lock);
 		}
 
@@ -687,8 +686,8 @@ setting_set_parse_conf(isc_mem_t *mctx, const char *name,
 	isc_buffer_add(&in_buf, len);
 
 	CHECK(cfg_parser_create(mctx, dns_lctx, &parser));
-	result = cfg_parse_buffer2(parser, &in_buf, name, cfg_type_conf,
-				   &config);
+	result = cfg_parse_buffer(parser, &in_buf, name, 0, cfg_type_conf,
+				  0, &config);
 	if (result == ISC_R_SUCCESS) {
 		cfg_printx(config, CFG_PRINTER_XKEY, cfg_printer, log_buf);
 		cfg_obj_log(config, dns_lctx, ISC_LOG_DEBUG(10),

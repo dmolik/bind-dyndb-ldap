@@ -286,8 +286,8 @@ dns_to_ldap_dn_escape(isc_mem_t *mctx, const char * const dns_str, char ** ldap_
 			}
 			/* LDAP uses \xy escaping. "xy" represent two hexadecimal digits.*/
 			/* TODO: optimize to bit mask & rotate & dec->hex table? */
-			CHECK(isc_string_printf(esc_name + esc_idx, 4, "\\%02x", ascii_val));
-			esc_idx += 3; /* isc_string_printf wrote 4 bytes including '\0' */
+			CHECK(snprintf(esc_name + esc_idx, 4, "\\%02x", ascii_val) < 4);
+			esc_idx += 3; /* snprintf wrote 4 bytes including '\0' */
 		}
 	}
 	if (idx_symb_first != -1) { /* copy last nice part */
@@ -435,15 +435,14 @@ rdatatype_to_ldap_attribute(dns_rdatatype_t rdtype, char *target,
 
 	if (unknown) {
 		/* "UnknownRecord;TYPE65333" */
-		CHECK(isc_string_copy(target, size,
-				      LDAP_RDATATYPE_UNKNOWN_PREFIX));
+		CHECK(strlcpy(target, LDAP_RDATATYPE_UNKNOWN_PREFIX, size) < size);
 		snprintf(rdtype_str, sizeof(rdtype_str), "TYPE%u", rdtype);
-		CHECK(isc_string_append(target, size, rdtype_str));
+		CHECK(strlcat(target, rdtype_str, size) < size);
 	} else {
 		/* "ARecord" */
 		dns_rdatatype_format(rdtype, rdtype_str, DNS_RDATATYPE_FORMATSIZE);
-		CHECK(isc_string_copy(target, size, rdtype_str));
-		CHECK(isc_string_append(target, size, LDAP_RDATATYPE_SUFFIX));
+		CHECK(strlcpy(target, rdtype_str, size) < size);
+		CHECK(strlcat(target, LDAP_RDATATYPE_SUFFIX, size) < size);
 	}
 
 cleanup:
@@ -463,7 +462,7 @@ rdata_to_generic(dns_rdata_t *rdata, isc_buffer_t *target)
 	dns_rdata_toregion(rdata, &rdata_reg);
 	REQUIRE(rdata_reg.length <= 65535);
 
-	result = isc_string_printf(buf, sizeof(buf), "\\# %u", rdata_reg.length);
+	result = snprintf(buf, sizeof(buf), "\\# %u", rdata_reg.length) < (int)sizeof(buf) ? ISC_R_SUCCESS : ISC_R_NOSPACE;
 	INSIST(result == ISC_R_SUCCESS);
 	isc_buffer_putstr(target, buf);
 	if (rdata_reg.length != 0U) {
