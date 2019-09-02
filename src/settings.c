@@ -2,12 +2,13 @@
  * Copyright (C) 2009-2014  bind-dyndb-ldap authors; see COPYING for license
  */
 
+#include <inttypes.h>
+
 #include <isc/util.h>
 #include <isc/mem.h>
 #include <isc/task.h>
 #include <isc/result.h>
 #include <isc/string.h>
-#include <isc/int.h>
 #include <isc/parseint.h>
 
 #include <dns/name.h>
@@ -160,7 +161,7 @@ setting_get(const char *const name, const setting_type_t type,
 
 	switch (type) {
 	case ST_UNSIGNED_INTEGER:
-		*(isc_uint32_t *)target = setting->value.value_uint;
+		*(uint32_t *)target = setting->value.value_uint;
 		break;
 	case ST_STRING:
 		*(char **)target = setting->value.value_char;
@@ -183,7 +184,7 @@ cleanup:
 
 isc_result_t
 setting_get_uint(const char *const name, const settings_set_t *const set,
-		 isc_uint32_t *target)
+		 uint32_t *target)
 {
 	return setting_get(name, ST_UNSIGNED_INTEGER, set, target);
 }
@@ -217,8 +218,8 @@ set_value(isc_mem_t *mctx, const settings_set_t *set, setting_t *setting,
 	  const char *value)
 {
 	isc_result_t result;
-	isc_uint32_t numeric_value;
-	isc_uint32_t len;
+	uint32_t numeric_value;
+	uint32_t len;
 
 	REQUIRE(setting != NULL);
 	REQUIRE(value != NULL);
