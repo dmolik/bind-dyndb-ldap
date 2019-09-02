@@ -141,6 +141,7 @@ extern bool verbose_checks; /* from settings.c */
 #define ASSERT_CONCAT_(a, b) a##b
 #define ASSERT_CONCAT(a, b) ASSERT_CONCAT_(a, b)
 /* These can't be used after statements in c89. */
+#ifndef STATIC_ASSERT
 #ifdef __COUNTER__
   #define STATIC_ASSERT(e, m) \
     ;enum { ASSERT_CONCAT(static_assert_, __COUNTER__) = 1/(!!(e)) }
@@ -151,6 +152,7 @@ extern bool verbose_checks; /* from settings.c */
    * compiled with gcc -combine -fwhole-program.  */
   #define STATIC_ASSERT(e, m) \
     ;enum { ASSERT_CONCAT(assert_line_, __LINE__) = 1/(!!(e)) }
+#endif
 #endif
 
 #endif /* !_LD_UTIL_H_ */
