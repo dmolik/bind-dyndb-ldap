@@ -65,7 +65,7 @@ mldap_new(isc_mem_t *mctx, mldapdb_t **mldapp) {
 	ZERO_PTR(mldap);
 	isc_mem_attach(mctx, &mldap->mctx);
 
-	CHECK(isc_refcount_init(&mldap->generation, 0));
+	isc_refcount_init(&mldap->generation, 0);
 	CHECK(metadb_new(mctx, &mldap->mdb));
 
 	*mldapp = mldap;

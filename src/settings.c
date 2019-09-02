@@ -282,7 +282,7 @@ set_value(isc_mem_t *mctx, const settings_set_t *set, setting_t *setting,
 			isc_mem_free(mctx, setting->value.value_char);
 		CHECKED_MEM_ALLOCATE(mctx, setting->value.value_char, len);
 		setting->is_dynamic = true;
-		CHECK(strlcpy(setting->value.value_char, value, len) < len);
+		CHECK(strlcpy(setting->value.value_char, value, len) >= len);
 		break;
 
 	case ST_UNSIGNED_INTEGER:

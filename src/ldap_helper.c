@@ -446,7 +446,7 @@ validate_local_instance_settings(ldap_instance_t *inst, settings_set_t *set) {
 			  auth_method_str);
 		CLEANUP_WITH(ISC_R_FAILURE);
 	}
-	CHECK(snprintf(print_buff, PRINT_BUFF_SIZE, "%u", auth_method_enum) < PRINT_BUFF_SIZE);
+	CHECK(snprintf(print_buff, PRINT_BUFF_SIZE, "%u", auth_method_enum) >= PRINT_BUFF_SIZE);
 	CHECK(setting_set("auth_method_enum", inst->local_settings, print_buff));
 
 	/* check we have the right data when SASL/GSSAPI is selected */
@@ -546,7 +546,7 @@ new_ldap_instance(isc_mem_t *mctx, const char *db_name, const char *parameters,
 
 	CHECKED_MEM_GET_PTR(mctx, ldap_inst);
 	ZERO_PTR(ldap_inst);
-	CHECK(isc_refcount_init(&ldap_inst->errors, 0));
+	isc_refcount_init(&ldap_inst->errors, 0);
 	isc_mem_attach(mctx, &ldap_inst->mctx);
 	CHECKED_MEM_STRDUP(mctx, db_name, ldap_inst->db_name);
 	dns_view_attach(dctx->view, &ldap_inst->view);
@@ -845,7 +845,7 @@ cleanup_zone_files(dns_zone_t *zone) {
 	if (namelen > 4 && strcmp(filename + namelen - 4, ".jnl") == 0)
 		namelen -= 4;
 	CHECK(snprintf(bck_filename, sizeof(bck_filename),
-				"%.*s.jbk", namelen, filename) < (int)sizeof(bck_filename));
+				"%.*s.jbk", namelen, filename) >= (int)sizeof(bck_filename));
 	CHECK(fs_file_remove(bck_filename));
 
 cleanup:
@@ -1714,7 +1714,7 @@ ldap_replace_serial(ldap_instance_t *inst, dns_name_t *zone,
 	change.mod_op = LDAP_MOD_REPLACE;
 	change.mod_type = "idnsSOAserial";
 	change.mod_values = values;
-	CHECK(snprintf(serial_char, MAX_SERIAL_LENGTH, "%u", serial) < (int)MAX_SERIAL_LENGTH);
+	CHECK(snprintf(serial_char, MAX_SERIAL_LENGTH, "%u", serial) >= (int)MAX_SERIAL_LENGTH);
 
 	CHECK(ldap_modify_do(inst, str_buf(dn), changep, false));
 
@@ -3284,7 +3284,7 @@ ldap_rdttl_to_ldapmod(isc_mem_t *mctx, dns_rdatalist_t *rdlist,
 
 	CHECK(ldap_mod_create(mctx, &change));
 	change->mod_op = LDAP_MOD_REPLACE;
-	CHECK(strlcpy(change->mod_type, "dnsTTL", LDAP_ATTR_FORMATSIZE) < LDAP_ATTR_FORMATSIZE);
+	CHECK(strlcpy(change->mod_type, "dnsTTL", LDAP_ATTR_FORMATSIZE) >= LDAP_ATTR_FORMATSIZE);
 
 	CHECKED_MEM_ALLOCATE(mctx, vals, 2 * sizeof(char *));
 	memset(vals, 0, 2 * sizeof(char *));
@@ -3330,7 +3330,7 @@ modify_soa_record(ldap_instance_t *ldap_inst, const char *zone_dn,
 	change[index].mod_values[0] = alloca(MAX_SOANUM_LENGTH); \
 	change[index].mod_values[1] = NULL; \
 	CHECK(snprintf(change[index].mod_values[0], \
-		MAX_SOANUM_LENGTH, "%u", soa.name) < MAX_SOANUM_LENGTH);
+		MAX_SOANUM_LENGTH, "%u", soa.name) >= MAX_SOANUM_LENGTH);
 
 	dns_rdata_tostruct(rdata, (void *)&soa, ldap_inst->mctx);
 
@@ -3497,7 +3497,7 @@ remove_rdtype_from_ldap(dns_name_t *owner, dns_name_t *zone,
 		change[0]->mod_vals.modv_strvals = NULL;
 		CHECK(rdatatype_to_ldap_attribute(type, attr, sizeof(attr),
 						  unknown_type));
-		CHECK(strlcpy(change[0]->mod_type, attr, LDAP_ATTR_FORMATSIZE) < LDAP_ATTR_FORMATSIZE);
+		CHECK(strlcpy(change[0]->mod_type, attr, LDAP_ATTR_FORMATSIZE) >= LDAP_ATTR_FORMATSIZE);
 		CHECK(ldap_modify_do(ldap_inst, str_buf(dn), change, false));
 		ldap_mod_free(ldap_inst->mctx, &change[0]);
 		unknown_type = !unknown_type;
@@ -4618,12 +4618,12 @@ ldap_sync_doit(ldap_instance_t *inst, ldap_connection_t *conn,
 	CHECK(setting_get_str("server_id", inst->server_ldap_settings, &server_id));
 	if (strlen(server_id) == 0)
 		CHECK(snprintf(filter, sizeof(filter), config_template,
-				        "", "", "", filter_objcs) < (int)sizeof(filter));
+				        "", "", "", filter_objcs) >= (int)sizeof(filter));
 	else
 		CHECK(snprintf(filter, sizeof(filter), config_template,
 					"  (&(objectClass=idnsServerConfigObject)"
 				        "    (idnsServerId=", server_id, "))",
-					filter_objcs) < (int)sizeof(filter));
+					filter_objcs) >= (int)sizeof(filter));
 
 	result = ldap_sync_prepare(inst, inst->server_ldap_settings,
 				   filter, conn, &ldap_sync);
