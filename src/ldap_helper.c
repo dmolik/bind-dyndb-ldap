@@ -667,13 +667,8 @@ new_ldap_instance(isc_mem_t *mctx, const char *db_name, const char *parameters,
 			      mctx, &ldap_inst->db_imp));
 
 	/* Start the watcher thread */
-	result = isc_thread_create(ldap_syncrepl_watcher, ldap_inst,
+	isc_thread_create(ldap_syncrepl_watcher, ldap_inst,
 				   &ldap_inst->watcher);
-	if (result != ISC_R_SUCCESS) {
-		ldap_inst->watcher = 0;
-		log_error("Failed to create syncrepl watcher thread");
-		goto cleanup;
-	}
 
 cleanup:
 	if (forwarders_list != NULL)
@@ -715,8 +710,7 @@ ldap_syncrepl_watcher_shutdown(ldap_instance_t *ldap_inst)
 				  "(already terminated?)");
 	}
 
-	RUNTIME_CHECK(isc_thread_join(ldap_inst->watcher, NULL)
-		      == ISC_R_SUCCESS);
+	isc_thread_join(ldap_inst->watcher, NULL);
 }
 
 void
@@ -987,8 +981,7 @@ create_zone(ldap_instance_t * const inst, const char * const dn,
 	dns_zone_setclass(raw, dns_rdataclass_in);
 	dns_zone_settype(raw, dns_zone_master);
 	/* dns_zone_setview(raw, view); */
-	CHECK(dns_zone_setdbtype(raw, sizeof(ldap_argv)/sizeof(ldap_argv[0]),
-				 ldap_argv));
+	dns_zone_setdbtype(raw, sizeof(ldap_argv)/sizeof(ldap_argv[0]), ldap_argv);
 	CHECK(configure_paths(inst->mctx, inst, raw, false));
 
 	if (want_secure == false) {
@@ -1000,7 +993,7 @@ create_zone(ldap_instance_t * const inst, const char * const dn,
 		dns_zone_setclass(secure, dns_rdataclass_in);
 		dns_zone_settype(secure, dns_zone_master);
 		/* dns_zone_setview(secure, view); */
-		CHECK(dns_zone_setdbtype(secure, 1, rbt_argv));
+		dns_zone_setdbtype(secure, 1, rbt_argv);
 		CHECK(dns_zonemgr_managezone(inst->zmgr, secure));
 		CHECK(dns_zone_link(secure, raw));
 		dns_zone_rekey(secure, true);

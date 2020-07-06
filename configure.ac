@@ -18,6 +18,45 @@ AC_PROG_LIBTOOL
 # Checks for header files.
 AC_CHECK_HEADERS([stddef.h stdlib.h string.h strings.h])
 
+#
+# Check for thread local storage
+#
+AC_CHECK_HEADERS([threads.h],
+		 [
+		     AC_MSG_CHECKING([for C11 Thread-Local Storage using thread_local])
+		     AC_COMPILE_IFELSE(
+			 [AC_LANG_PROGRAM(
+			      [
+				  #include <threads.h>
+			      ],[
+				  static thread_local int tls = 0;
+				  return (tls);
+			      ])
+			 ],[
+			     AC_MSG_RESULT([yes])
+			     AC_DEFINE([HAVE_THREAD_LOCAL],[1],[Define if thread_local keyword is available])
+			     AC_DEFINE([HAVE_TLS],[1],[Define if Thread-Local Storage is available])
+			 ],[
+			     AC_MSG_ERROR([Thread Local Storage support required, update your toolchain to build BIND 9])
+			 ])
+		 ],[
+		     AC_MSG_CHECKING([for Thread-Local Storage using __thread])
+		     AC_COMPILE_IFELSE(
+			 [AC_LANG_PROGRAM(
+			      [
+			      ],[
+				  static __thread int tls = 0;
+				  return (tls);
+			      ])
+			 ],[
+			     AC_MSG_RESULT([yes])
+			     AC_DEFINE([HAVE___THREAD],[1],[Define if __thread keyword is available])
+			     AC_DEFINE([HAVE_TLS],[1],[Define if Thread-Local Storage is available])
+			 ],[
+			     AC_MSG_ERROR([Thread Local Storage support required, update your toolchain to build BIND 9])
+			 ])
+		 ])
+
 # Checks for typedefs, structures, and compiler characteristics.
 AC_TYPE_SIZE_T
 
